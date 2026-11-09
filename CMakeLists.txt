@@ -38,7 +38,7 @@ else()
 endif()
 
 if (WIN32)
-    target_link_libraries(sqlbot PRIVATE ws2_32 advapi32)
+    target_link_libraries(sqlbot PRIVATE ws2_32 advapi32 odbc32)
 endif()
 
 if (SQLBOT_ENABLE_SQLITE3)
