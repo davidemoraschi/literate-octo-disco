@@ -1,5 +1,6 @@
 #include "app.h"
 #include "utils/config.h"
+#include "utils/connection_info.h"
 
 #include <exception>
 #include <future>
@@ -19,10 +20,12 @@ namespace {
 constexpr int kInputId = 1001;
 constexpr int kRunId = 1002;
 constexpr int kOutputId = 1003;
+constexpr int kInfoId = 1004;
 
 struct GuiState {
     RuntimeConfig config;
     std::unique_ptr<std::future<std::string>> inflight;
+    std::string last_error;
 };
 
 std::wstring ToWide(const std::string& text) {
@@ -51,6 +54,27 @@ std::string ToUtf8(const std::wstring& text) {
     return out;
 }
 
+// Connection summary plus the latest error, formatted for a static control (CRLF breaks).
+std::wstring BuildInfoText(const GuiState& state) {
+    std::string text = DescribeConnection(state.config);
+    text += "\nLast error: ";
+    text += state.last_error.empty() ? std::string("none") : state.last_error;
+    std::wstring out;
+    out.reserve(text.size() + 16);
+    for (const wchar_t ch : ToWide(text)) {
+        if (ch == L'\n') {
+            out += L"\r\n";
+        }
+        else {
+            out += ch;
+        }
+    }
+    return out;
+}
+void RefreshInfo(const HWND hwnd, const GuiState& state) {
+    SetWindowTextW(GetDlgItem(hwnd, kInfoId), BuildInfoText(state).c_str());
+}
+
 LRESULT CALLBACK WndProc(const HWND hwnd, const UINT msg, const WPARAM wparam, const LPARAM lparam) {
     auto* state = reinterpret_cast<GuiState*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
@@ -64,8 +88,13 @@ LRESULT CALLBACK WndProc(const HWND hwnd, const UINT msg, const WPARAM wparam, c
                           10, 10, 620, 24, hwnd, reinterpret_cast<HMENU>(kInputId), nullptr, nullptr);
             CreateWindowW(L"BUTTON", L"Run", WS_VISIBLE | WS_CHILD,
                           640, 10, 80, 24, hwnd, reinterpret_cast<HMENU>(kRunId), nullptr, nullptr);
+            CreateWindowW(L"STATIC", L"", WS_VISIBLE | WS_CHILD | WS_BORDER | SS_LEFT | SS_NOPREFIX,
+                10, 45, 710, 130, hwnd, reinterpret_cast<HMENU>(kInfoId), nullptr, nullptr);
             CreateWindowW(L"EDIT", L"", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL,
-                          10, 45, 710, 390, hwnd, reinterpret_cast<HMENU>(kOutputId), nullptr, nullptr);
+                10, 185, 710, 370, hwnd, reinterpret_cast<HMENU>(kOutputId), nullptr, nullptr);
+            if (state != nullptr) {
+                RefreshInfo(hwnd, *state);
+            }
             return 0;
         }
         case WM_COMMAND: {
@@ -89,6 +118,8 @@ LRESULT CALLBACK WndProc(const HWND hwnd, const UINT msg, const WPARAM wparam, c
                     const std::string output = state->inflight->get();
                     SetWindowTextW(GetDlgItem(hwnd, kOutputId), ToWide(output).c_str());
                 } catch (const std::exception& ex) {
+                    state->last_error = ex.what();
+                    RefreshInfo(hwnd, *state);
                     SetWindowTextW(GetDlgItem(hwnd, kOutputId), ToWide(std::string("Error: ") + ex.what()).c_str());
                 }
                 state->inflight.reset();
@@ -113,9 +144,9 @@ int RunGui(const RuntimeConfig& config) {
 
     RegisterClassW(&wc);
 
-    GuiState state{config};
+    GuiState state{ config, nullptr,{} };
     HWND hwnd = CreateWindowExW(0, klass, L"SQLBot", WS_OVERLAPPEDWINDOW,
-                                CW_USEDEFAULT, CW_USEDEFAULT, 760, 500,
+                                CW_USEDEFAULT, CW_USEDEFAULT, 760, 620,
                                 nullptr, nullptr, GetModuleHandle(nullptr), &state);
     if (hwnd == nullptr) {
         throw std::runtime_error("Failed to initialize Win32 GUI");

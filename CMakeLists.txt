@@ -15,6 +15,7 @@ add_executable(sqlbot
     src/db_connector/sqlserver_connector.cpp
     src/db_connector/bigquery_connector.cpp
     src/utils/config.cpp
+    src/utils/connection_info.cpp
     src/utils/string_utils.cpp
 )
 
