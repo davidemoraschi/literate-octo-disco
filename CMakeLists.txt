@@ -23,10 +23,18 @@ target_include_directories(sqlbot PRIVATE src)
 target_compile_definitions(sqlbot PRIVATE _HAS_CXX23=1)
 
 if (MSVC)
-    target_compile_options(sqlbot PRIVATE /W4 /O2 /GL /Gy /Gw /MT)
+        # Optimization flags are release-only: /O2 conflicts with the Debug
+    # defaults (/Od /RTC1) that CMake adds, so they must not be unconditional.
+    target_compile_options(sqlbot PRIVATE
+        /W4
+        $<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:/O2 /GL /Gy /Gw>)
+    target_link_options(sqlbot PRIVATE
+        $<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:/LTCG /OPT:REF /OPT:ICF>)
     set_property(TARGET sqlbot PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 else()
-    target_compile_options(sqlbot PRIVATE -Wall -Wextra -Wpedantic -O2)
+    target_compile_options(sqlbot PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(sqlbot PRIVATE
+        $<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:-O2>)
 endif()
 
 if (WIN32)
