@@ -3,6 +3,9 @@
 #include <stdexcept>
 
 #ifdef _WIN32
+// windows.h must come first: sqltypes.h relies on the Windows base types and
+// macros (e.g. _W64, __int64 typedefs) and fails to parse without them.
+#include <windows.h>
 #include <sql.h>
 #include <sqltypes.h>
 #include <sqlext.h>
