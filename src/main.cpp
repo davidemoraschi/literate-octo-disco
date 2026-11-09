@@ -79,15 +79,19 @@ LRESULT CALLBACK WndProc(const HWND hwnd, const UINT msg, const WPARAM wparam, c
             SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(state));
 
             CreateWindowW(L"EDIT", L"", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL,
-                          10, 10, 620, 24, hwnd, reinterpret_cast<HMENU>(kInputId), nullptr, nullptr);
+                          10, 10, 620, 24, hwnd,
+                          reinterpret_cast<HMENU>(static_cast<INT_PTR>(kInputId)), nullptr, nullptr);
             CreateWindowW(L"BUTTON", L"Run", WS_VISIBLE | WS_CHILD,
-                          640, 10, 80, 24, hwnd, reinterpret_cast<HMENU>(kRunId), nullptr, nullptr);
+                          640, 10, 80, 24, hwnd,
+                          reinterpret_cast<HMENU>(static_cast<INT_PTR>(kRunId)), nullptr, nullptr);
             // Status label showing connection info
             const std::string status_text = FormatConnectionInfo(state->config);
             CreateWindowW(L"STATIC", ToWide(status_text).c_str(), WS_VISIBLE | WS_CHILD | SS_LEFT,
-                10, 40, 710, 20, hwnd, reinterpret_cast<HMENU>(kStatusId), nullptr, nullptr);
+                          10, 40, 710, 20, hwnd,
+                          reinterpret_cast<HMENU>(static_cast<INT_PTR>(kStatusId)), nullptr, nullptr);
             CreateWindowW(L"EDIT", L"", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL,
-                10, 65, 710, 360, hwnd, reinterpret_cast<HMENU>(kOutputId), nullptr, nullptr);
+                          10, 65, 710, 360, hwnd,
+                          reinterpret_cast<HMENU>(static_cast<INT_PTR>(kOutputId)), nullptr, nullptr);
             return 0;
         }
         case WM_COMMAND: {
