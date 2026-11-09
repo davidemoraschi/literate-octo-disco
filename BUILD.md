@@ -21,7 +21,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSQLBOT_ENABLE_SQLITE3=
 - Output executable: `build/sqlbot.exe` (Windows)
 - Runtime modes:
   - CLI: `sqlbot.exe --db=sqlite:test.db "Top 5 products by revenue"`
-  - GUI: `sqlbot.exe --gui --db=sqlserver:Driver={ODBC Driver 18 for SQL Server};Server=tcp:localhost,1433;Encrypt=yes;TrustServerCertificate=no;UID=user;******
+  - GUI: `sqlbot.exe --gui --db=sqlite:sample.db --mcp=mcp://127.0.0.1:8080`
 
 ## MCP version negotiation
 - Client starts with `MCP/1.1 IDENTIFY`
