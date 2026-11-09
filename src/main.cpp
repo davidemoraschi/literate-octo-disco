@@ -19,10 +19,12 @@ namespace {
 constexpr int kInputId = 1001;
 constexpr int kRunId = 1002;
 constexpr int kOutputId = 1003;
+constexpr int kStatusId = 1004;
 
 struct GuiState {
     RuntimeConfig config;
     std::unique_ptr<std::future<std::string>> inflight;
+    std::string latest_error;
 };
 
 std::wstring ToWide(const std::string& text) {
@@ -51,6 +53,22 @@ std::string ToUtf8(const std::wstring& text) {
     return out;
 }
 
+std::string FormatConnectionInfo(const RuntimeConfig& config) {
+    std::string db_name;
+    switch (config.database_type) {
+    case DatabaseType::SQLite:
+        db_name = "SQLite";
+        break;
+    case DatabaseType::SqlServer:
+        db_name = "SQL Server";
+        break;
+    case DatabaseType::BigQuery:
+        db_name = "BigQuery";
+        break;
+    }
+    return "DB: " + db_name + " | MCP: " + config.mcp_server + " | Timeout: " + std::to_string(config.timeout.count()) + "s";
+}
+
 LRESULT CALLBACK WndProc(const HWND hwnd, const UINT msg, const WPARAM wparam, const LPARAM lparam) {
     auto* state = reinterpret_cast<GuiState*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
@@ -64,8 +82,12 @@ LRESULT CALLBACK WndProc(const HWND hwnd, const UINT msg, const WPARAM wparam, c
                           10, 10, 620, 24, hwnd, reinterpret_cast<HMENU>(kInputId), nullptr, nullptr);
             CreateWindowW(L"BUTTON", L"Run", WS_VISIBLE | WS_CHILD,
                           640, 10, 80, 24, hwnd, reinterpret_cast<HMENU>(kRunId), nullptr, nullptr);
+            // Status label showing connection info
+            const std::string status_text = FormatConnectionInfo(state->config);
+            CreateWindowW(L"STATIC", ToWide(status_text).c_str(), WS_VISIBLE | WS_CHILD | SS_LEFT,
+                10, 40, 710, 20, hwnd, reinterpret_cast<HMENU>(kStatusId), nullptr, nullptr);
             CreateWindowW(L"EDIT", L"", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL,
-                          10, 45, 710, 390, hwnd, reinterpret_cast<HMENU>(kOutputId), nullptr, nullptr);
+                10, 65, 710, 360, hwnd, reinterpret_cast<HMENU>(kOutputId), nullptr, nullptr);
             return 0;
         }
         case WM_COMMAND: {
@@ -88,8 +110,16 @@ LRESULT CALLBACK WndProc(const HWND hwnd, const UINT msg, const WPARAM wparam, c
                 try {
                     const std::string output = state->inflight->get();
                     SetWindowTextW(GetDlgItem(hwnd, kOutputId), ToWide(output).c_str());
+                    // Clear error on success
+                    state->latest_error.clear();
+                    const std::string status_text = FormatConnectionInfo(state->config);
+                    SetWindowTextW(GetDlgItem(hwnd, kStatusId), ToWide(status_text).c_str());
                 } catch (const std::exception& ex) {
-                    SetWindowTextW(GetDlgItem(hwnd, kOutputId), ToWide(std::string("Error: ") + ex.what()).c_str());
+                    state->latest_error = ex.what();
+                    SetWindowTextW(GetDlgItem(hwnd, kOutputId), ToWide(std::string("Error: ") + state->latest_error).c_str());
+                    // Update status to show error
+                    const std::string error_status = "ERROR: " + state->latest_error;
+                    SetWindowTextW(GetDlgItem(hwnd, kStatusId), ToWide(error_status).c_str());
                 }
                 state->inflight.reset();
                 KillTimer(hwnd, 1);
