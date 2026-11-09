@@ -3,9 +3,9 @@
 #include <stdexcept>
 
 #ifdef _WIN32
-#include <sqlext.h>
-#include <sqltypes.h>
 #include <sql.h>
+#include <sqltypes.h>
+#include <sqlext.h>
 #endif
 
 namespace sqlbot {
